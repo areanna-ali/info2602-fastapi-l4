@@ -80,4 +80,19 @@ def delete_todo(id:int, db:SessionDep, user:AuthDep):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="An error occurred while deleting an item",
         )
-    
+
+
+@todos_router.post('/category', response_model=Category)
+def create_category(category_data: CreateCategory, db: SessionDep, user:AuthDep):
+    category = Category(id = id, user_id=user)
+
+    try:
+        db.add(category)
+        db.commit()
+        db.refresh(category)
+        return category
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="An error occurred!",
+        )

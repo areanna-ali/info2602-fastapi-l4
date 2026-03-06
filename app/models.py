@@ -68,3 +68,6 @@ class Todo(SQLModel, table=True):
     
     def get_cat_list(self):
         return ', '.join([category.text for category in self.categories])
+
+class CreateCategory(SQLModel):
+    text:str
