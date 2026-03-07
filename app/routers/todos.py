@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import select
+from sqlmodel import select, delete
 from app.database import SessionDep
 from app.models import *
 from app.auth import encrypt_password, verify_password, create_access_token, AuthDep
@@ -84,7 +84,7 @@ def delete_todo(id:int, db:SessionDep, user:AuthDep):
 
 @todos_router.post('/category', response_model=Category)
 def create_category(category_data: CreateCategory, db: SessionDep, user:AuthDep):
-    category = Category(id = id, user_id=user)
+    category = Category(user_id=user.id, text=category_data.text)
 
     try:
         db.add(category)
@@ -96,3 +96,67 @@ def create_category(category_data: CreateCategory, db: SessionDep, user:AuthDep)
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="An error occurred!",
         )
+
+@todos_router.post('/todo/{todo_id}/category/{cat_id}', response_model=TodoResponse)
+def add_cat_to_todo(cat_id: int, todo_id: int, db: SessionDep, user: AuthDep):
+    todo = db.exec(select(Todo).where(Todo.id==todo_id)).one_or_none()
+    if not todo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+        )
+    
+    category = db.exec(select(Category).where(Category.id==cat_id)).one_or_none()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+        )
+    
+    if category is not todo.categories:
+        todo.categories.append(category)
+        db.add(todo)
+        db.commit()
+        db.refresh(todo)
+
+    return todo
+
+@todos_router.delete('/todo/{todo_id}/category/{cat_id}', response_model=TodoResponse)
+def delete_cat_from_todo(cat_id: int, todo_id: int, db: SessionDep, user: AuthDep):
+    todo = db.exec(select(Todo).where(Todo.id==todo_id)).one_or_none()
+    if not todo:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+        )
+    
+    statement = delete(TodoCategory).where(TodoCategory.todo_id==todo_id, TodoCategory.category_id==cat_id)
+    result = db.exec(statement)
+    db.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Bad Request",
+        )
+    
+    db.refresh(todo)
+    return todo
+
+@todos_router.get('/category/{cat_id}/todos', response_model=list[TodoResponse])
+def list_todos_by_cat(cat_id: int, db: SessionDep, user: AuthDep):
+
+    category = db.exec(select(Category).where(Category.id==cat_id, Category.user_id==user.id)).one_or_none()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+
+    return category.todos
+    
+
+
+
+
+
