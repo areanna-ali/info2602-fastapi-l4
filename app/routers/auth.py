@@ -11,11 +11,11 @@ auth_router = APIRouter(tags=["Authentication"])
 
 @auth_router.post("/token")
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    data: LoginInfo,
     db: SessionDep
 ) -> Token:
-    user = db.exec(select(RegularUser).where(RegularUser.username == form_data.username)).one_or_none()
-    if not user or not verify_password(plaintext_password=form_data.password, encrypted_password=user.password):
+    user = db.exec(select(RegularUser).where(RegularUser.username == data.username)).one_or_none()
+    if not user or not verify_password(plaintext_password=data.password, encrypted_password=user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

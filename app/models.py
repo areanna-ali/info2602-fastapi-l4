@@ -77,3 +77,7 @@ class Todo(SQLModel, table=True):
 
 class CreateCategory(SQLModel):
     text:str
+
+class LoginInfo(SQLModel):
+    username: str
+    password: str
